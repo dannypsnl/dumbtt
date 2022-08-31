@@ -1,11 +1,11 @@
 #lang scribble/manual
 
-@require[@for-label[racket-project
+@require[@for-label[dumbtt
                     racket/base]]
 
-@title{racket-project}
+@title{dumbtt}
 @author{Lîm Tsú-thuàn}
 
-@defmodule[racket-project]
+@defmodule[dumbtt]
 
 Package Description Here
