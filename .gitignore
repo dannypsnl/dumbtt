@@ -1,7 +1,1 @@
-*~
-\#*
-.\#*
-.DS_Store
-compiled/
-/doc/
-coverage/
+_build/
