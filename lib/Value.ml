@@ -5,6 +5,7 @@ type value =
   | Sg of value * closure
   | Lam of closure
   | Pair of value * value
+  | Type of int
   | Stuck of stuck * value (* the `value` here is the type of `stuck` *)
 
 and stuck =

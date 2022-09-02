@@ -10,3 +10,5 @@ type term =
   | Pair of term * term
   | Fst of term
   | Snd of term
+  (* universe of type *)
+  | Type of int

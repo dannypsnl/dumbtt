@@ -5,15 +5,15 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github dannypsnl/dumbtt))
 
-(authors "Author Name")
+(authors "L\195\174m Ts\195\186-thu\195\160n")
 
 (maintainers "Maintainer Name")
 
 (license LICENSE)
 
-(documentation https://url/to/documentation)
+(documentation https://github.com/dannypsnl/dumbtt)
 
 (package
  (name dumbtt)

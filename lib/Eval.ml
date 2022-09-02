@@ -35,6 +35,7 @@ let rec eval : V.env -> S.term -> V.value =
       V.Pair (vl, vr)
   | S.Fst pair -> fst (eval env pair)
   | S.Snd pair -> snd (eval env pair)
+  | S.Type i -> V.Type i
 
 and fst : V.value -> V.value =
  fun vpair ->
