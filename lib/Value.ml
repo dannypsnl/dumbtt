@@ -27,3 +27,22 @@ and env =
   | Emp
   (* empty *)
   | Extend of env * value
+
+let rec v_to_str : value -> string =
+ fun v ->
+  match v with
+  | Pi (_, _) -> "Pi"
+  | Sg (_, _) -> "Sigma"
+  | Lam _ -> "Lambda"
+  | Pair (l, r) -> v_to_str l ^ "x" ^ v_to_str r
+  | Type i -> "Type_" ^ string_of_int i
+  | Stuck (s, ty) -> stuck_to_str s ^ " : " ^ v_to_str ty
+
+and stuck_to_str : stuck -> string =
+ fun s ->
+  match s with
+  | Var (Lvl i) -> "#" ^ string_of_int i
+  | Fst s -> stuck_to_str s ^ ".1"
+  | Snd s -> stuck_to_str s ^ ".2"
+  | App { fn; arg; base } ->
+      stuck_to_str fn ^ "(" ^ v_to_str arg ^ ")" ^ " : " ^ v_to_str base

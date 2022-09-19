@@ -1,8 +1,9 @@
-exception TODO
-exception Unequal
-
 module V = Value
 module S = Syntax
+
+exception Unequal of V.value * V.value
+exception UnequalV of V.value * V.value
+exception UnequalS of V.stuck * V.stuck
 
 (* G |- A == B type *)
 let rec equate_ty : int -> V.value -> V.value -> unit =
@@ -23,9 +24,14 @@ let rec equate_ty : int -> V.value -> V.value -> unit =
       let fiber0 = Eval.eval (V.Extend (env0, var)) fam0 in
       let fiber1 = Eval.eval (V.Extend (env1, var)) fam1 in
       equate_ty (len + 1) fiber0 fiber1
-  | _ -> raise Unequal
+  | V.Type l0, V.Type l1 -> if l0 = l1 then () else raise (Unequal (tp0, tp1))
+  | V.Stuck (s0, t0), V.Stuck (s1, t1) ->
+      equate_ty 0 t0 t1;
+      equate_stuck 0 s0 s1;
+      ()
+  | _ -> raise (Unequal (tp0, tp1))
 
-let rec equate : int -> V.value -> V.value -> V.value -> unit =
+and equate : int -> V.value -> V.value -> V.value -> unit =
  fun len tp val0 val1 ->
   match tp with
   | V.Pi (base, V.C { binder = B fam; env }) ->
@@ -47,12 +53,12 @@ let rec equate : int -> V.value -> V.value -> V.value -> unit =
       | V.Stuck (stuck0, tp0), V.Stuck (stuck1, tp1) ->
           equate_ty len tp0 tp1;
           equate_stuck len stuck0 stuck1
-      | _ -> raise Unequal)
+      | _ -> raise (UnequalV (val0, val1)))
 
 and equate_stuck : int -> V.stuck -> V.stuck -> unit =
  fun len s0 s1 ->
   match (s0, s1) with
-  | V.Var l0, V.Var l1 -> if l0 = l1 then () else raise Unequal
+  | V.Var l0, V.Var l1 -> if l0 = l1 then () else raise (UnequalS (s0, s1))
   | V.Fst s0, V.Fst s1 -> equate_stuck len s0 s1
   | V.Snd s0, V.Fst s1 -> equate_stuck len s0 s1
   | ( V.App { fn = fn0; arg = arg0; base = base0 },
@@ -60,4 +66,4 @@ and equate_stuck : int -> V.stuck -> V.stuck -> unit =
       equate_stuck len fn0 fn1;
       equate_ty len base0 base1;
       equate len base0 arg0 arg1
-  | _ -> raise Unequal
+  | _ -> raise (UnequalS (s0, s1))
