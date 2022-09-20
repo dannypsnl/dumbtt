@@ -17,7 +17,7 @@ type definition =
 type program = definition list
 
 let rec depth : V.env -> int =
- fun env -> match env with Emp -> 0 | Extend (env, _) -> depth env
+ fun env -> match env with Emp -> 0 | Extend (env, _) -> 1 + depth env
 
 let rec check_def : V.env -> definition -> V.env =
  fun env d ->
