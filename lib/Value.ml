@@ -23,10 +23,8 @@ and closure =
 (* Gamma, x : A |- binder : B *)
 (* ------------------------------------- *)
 (* env : foreach z : C in Gamma, a value *)
-and env =
-  | Emp
-  (* empty *)
-  | Extend of env * value
+and env = value list
+and ctx = value list
 
 let rec v_to_str : value -> string =
  fun v ->

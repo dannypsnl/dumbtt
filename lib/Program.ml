@@ -1,12 +1,13 @@
 (* These code forms a very basic top-level forms *)
 exception TODO
-
+exception InferLambda
+open List
 module S = Syntax
 module V = Value
 module Eq = Equality
 module E = Eval
 
-type definition =
+type top_def =
   (* let x : T = t *)
   | Let of string * S.term * S.term
   (* assume x : T *)
@@ -14,63 +15,55 @@ type definition =
   (* check term : T *)
   | Check of S.term * S.term
 
-type program = definition list
+type program = top_def list
 
-let rec depth : V.env -> int =
- fun env -> match env with Emp -> 0 | Extend (env, _) -> 1 + depth env
-
-let rec check_def : V.env -> definition -> V.env =
- fun env d ->
+let rec check_program : V.env -> V.ctx -> top_def list -> unit =
+ fun env ctx d ->
   match d with
+  | [] -> ()
   (* infer type from term *)
   (* equate_ty ty and ty' *)
   (* bind toplevel context with x *)
-  | Let (_, _, _) -> raise TODO
-  | Assume (_, ty) ->
-      let ty' = E.eval env ty in
-      V.Extend (env, V.Stuck (V.Var (Lvl (depth env)), ty'))
-  | Check (tm, ty) ->
-      let ty' = infer_ty (E.eval env tm) in
+  | Let (_x, a, t) :: rest ->
+    let (t, a') = infer env ctx t in
+    Eq.equate_ty (length ctx) (E.eval env a) a';
+    check_program (E.eval env t :: env) (a' :: ctx) rest
+  | Assume (_x, ty) :: rest ->
+    let t = E.eval env ty in
+    check_program (V.Stuck (V.Var (Lvl (length env)), t) :: env) (t :: ctx) rest
+  | Check (tm, ty) :: rest ->
+      let (_tm, ty') = infer env ctx tm in
+      let ty = E.eval env ty in
       print_string (V.v_to_str ty');
       print_newline ();
-      print_string (V.v_to_str (E.eval env ty));
+      print_string (V.v_to_str ty);
       print_newline ();
-      Eq.equate_ty 0 (E.eval env ty) ty';
-      env
+      Eq.equate_ty 0 ty ty';
+      check_program env ctx rest
 
-and infer_ty : V.value -> V.value =
- fun v ->
-  match v with
-  | V.Stuck (_, ty) -> ty
-  | V.Type i -> V.Type (i + 1)
-  | _ -> raise TODO
+and infer : V.env -> V.ctx -> S.term -> (S.term * V.value) =
+ fun env ctx tm ->
+  match tm with 
+  | Var (Idx x) -> (Var (Idx x), E.proj ctx x)
+  | Pi (_, _) -> raise TODO
+  | Sg (a, B fam) ->
+    let a = check env ctx a (V.Type 0) in 
+    let a' = E.eval env a in
+    let _fiber = E.eval (V.Stuck (V.Var (Lvl (length env)), a') :: env) fam in
+    (Sg (a, B fam), V.Type 0)
+  (* cannot infer a lambda *)
+  | Lam _ -> raise InferLambda
+  | App (_, _) -> raise TODO
+  | Pair (_, _) -> raise TODO
+  | Fst _ -> raise TODO
+  | Snd _ -> raise TODO
+  (* universe of type *)
+  | Type i -> (Type i, V.Type (i+1))
 
-let check_program : program -> bool =
- fun p ->
-  Printexc.register_printer (function
-    | Eq.Unequal (t1, t2) ->
-        Some
-          (Printf.sprintf "TYPE `%s` not equals to `%s`" (V.v_to_str t1)
-             (V.v_to_str t2))
-    | Eq.UnequalV (t1, t2) ->
-        Some
-          (Printf.sprintf "VALUE `%s` not equals to `%s`" (V.v_to_str t1)
-             (V.v_to_str t2))
-    | Eq.UnequalS (t1, t2) ->
-        Some
-          (Printf.sprintf "STUCK `%s` not equals to `%s`" (V.stuck_to_str t1)
-             (V.stuck_to_str t2))
-    | _ -> None);
-  let _ = List.fold_left check_def V.Emp p in
-  true
-
-let%test _ =
-  check_program
-    [
-      (* Nat : Type 0 *)
-      Assume ("Nat", S.Type 0);
-      (* zero : Nat *)
-      Assume ("zero", S.Var (Idx 0));
-      Check (S.Var (Idx 1), S.Type 0);
-      Check (S.Var (Idx 0), S.Var (Idx 1));
-    ]
+and check : V.env -> V.ctx -> S.term -> V.value -> S.term =
+  fun env ctx tm ty ->
+    match (tm, ty) with
+    | t, expected -> 
+      let (t', inferred) = infer env ctx t in
+      Eq.equate_ty (length ctx) inferred expected;
+       t'

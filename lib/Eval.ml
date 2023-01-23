@@ -6,8 +6,8 @@ module S = Syntax
 let rec proj : V.env -> int -> V.value =
  fun env i ->
   match env with
-  | Emp -> failwith "cannot find variable"
-  | Extend (env', v) ->
+  | [] -> failwith "cannot find variable"
+  | v :: env' ->
       if i == 0 then v
       else if i > 0 then proj env' (i - 1)
       else failwith "bug: the indices shouldn't smaller than 0"
@@ -55,7 +55,7 @@ and snd : V.value -> V.value =
       match tp with
       | V.Sg (_, V.C { binder = B fam; env }) ->
           let u = fst vpair in
-          let fiber = eval (V.Extend (env, u)) fam in
+          let fiber = eval (u :: env) fam in
           V.Stuck (V.Snd stuck, fiber)
       | _ -> failwith "you cannot do projection on non-sigma")
   | _ -> failwith "you cannot do projection on non-pair"
@@ -64,7 +64,7 @@ and app : V.value -> V.value -> V.value =
  fun vfn varg ->
   match vfn with
   | V.Lam (V.C { binder = B term; env }) ->
-      let env' = V.Extend (env, varg) in
+      let env' = (varg :: env) in
       eval env' term
   | V.Stuck (stuck, tp) -> (
       match tp with
@@ -73,7 +73,7 @@ and app : V.value -> V.value -> V.value =
           (* ------------------ *)
           (* M(N) : B[N] *)
           let stuck = V.App { fn = stuck; arg = varg; base } in
-          let fiber = eval (V.Extend (env, varg)) fam in
+          let fiber = eval (varg :: env) fam in
           V.Stuck (stuck, fiber)
       | _ -> failwith "cannot apply on non-pi")
   | _ -> failwith "cannot apply on non-lambda"
