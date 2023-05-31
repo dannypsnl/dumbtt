@@ -22,7 +22,7 @@ and stuck =
 and closure =
   (* closure bind a term up to value place *)
   (* and with a captured environment *)
-  | C of { binder : Syntax.term Syntax.binder; env : env }
+  | Clos of { binder : Syntax.term Syntax.binder; env : env }
 
 and env = value list
 

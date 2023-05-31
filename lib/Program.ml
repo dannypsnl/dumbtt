@@ -88,10 +88,10 @@ and infer : context -> S.term -> S.term * V.vty =
   | App (t, u) -> (
       let t, tty = infer ctx t in
       match tty with
-      | Pi (a, V.C { binder = B term; env }) ->
+      | Pi (a, clos) ->
           let u = check ctx u a in
           let u' = E.eval ctx.env u in
-          let b = E.eval (u' :: env) term in
+          let b = E.clos_app clos u' in
           (App (t, u), b)
       | _ -> raise TODO)
   | Pair (_, _) -> raise TODO

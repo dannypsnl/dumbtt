@@ -18,13 +18,13 @@ let rec eval : V.env -> S.term -> V.value =
   | S.Var (S.Idx i) -> proj env i
   | S.Pi (base, fam) ->
       let vbase = eval env base in
-      let cfam = V.C { binder = fam; env } in
+      let cfam = V.Clos { binder = fam; env } in
       V.Pi (vbase, cfam)
   | S.Sg (base, fam) ->
       let vbase = eval env base in
-      let cfam = V.C { binder = fam; env } in
+      let cfam = V.Clos { binder = fam; env } in
       V.Sg (vbase, cfam)
-  | S.Lam binder -> V.Lam (V.C { binder; env })
+  | S.Lam binder -> V.Lam (V.Clos { binder; env })
   | S.App (fn, arg) ->
       let vfn = eval env fn in
       let varg = eval env arg in
@@ -36,6 +36,10 @@ let rec eval : V.env -> S.term -> V.value =
   | S.Fst pair -> fst (eval env pair)
   | S.Snd pair -> snd (eval env pair)
   | S.Type i -> V.Type i
+
+(* aka fiber *)
+and clos_app : V.closure -> V.value -> V.value =
+ fun (V.Clos { binder = B fam; env }) arg -> eval (arg :: env) fam
 
 and fst : V.value -> V.value =
  fun vpair ->
@@ -53,9 +57,8 @@ and snd : V.value -> V.value =
   | V.Pair (_, r) -> r
   | V.Stuck (stuck, tp) -> (
       match tp with
-      | V.Sg (_, V.C { binder = B fam; env }) ->
-          let u = fst vpair in
-          let fiber = eval (u :: env) fam in
+      | V.Sg (_, clos) ->
+          let fiber = clos_app clos (fst vpair) in
           V.Stuck (V.Snd stuck, fiber)
       | _ -> failwith "you cannot do projection on non-sigma")
   | _ -> failwith "you cannot do projection on non-pair"
@@ -63,17 +66,15 @@ and snd : V.value -> V.value =
 and app : V.value -> V.value -> V.value =
  fun vfn varg ->
   match vfn with
-  | V.Lam (V.C { binder = B term; env }) ->
-      let env' = (varg :: env) in
-      eval env' term
+  | V.Lam clos -> clos_app clos varg
   | V.Stuck (stuck, tp) -> (
       match tp with
-      | V.Pi (base, V.C { binder = B fam; env }) ->
+      | V.Pi (base, clos) ->
           (* M : Pi(x : A).B[x] *)
           (* ------------------ *)
-          (* M(N) : B[N] *)
+          (*     M(N) : B[N]    *)
           let stuck = V.App { fn = stuck; arg = varg; base } in
-          let fiber = eval (varg :: env) fam in
+          let fiber = clos_app clos varg in
           V.Stuck (stuck, fiber)
       | _ -> failwith "cannot apply on non-pi")
   | _ -> failwith "cannot apply on non-lambda"
