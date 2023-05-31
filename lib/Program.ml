@@ -1,6 +1,6 @@
 (* These code forms a very basic top-level forms *)
 exception TODO
-exception InferLambda
+exception BadInfer of string
 
 open List
 module S = Syntax
@@ -75,11 +75,16 @@ let rec check_program : context -> top_def list -> unit =
 and infer : context -> S.term -> S.term * V.vty =
  fun ctx tm ->
   match tm with
-  (* cannot infer a lambda *)
-  | Lam _ -> raise InferLambda
+  (* non inferrable *)
+  | Lam _ -> raise (BadInfer "lambda")
+  | Pair (_, _) -> raise (BadInfer "pair")
   (* inferrable *)
   | Var (Idx x) -> (Var (Idx x), ctx_proj ctx.ctx x)
-  | Pi (_, _) -> raise TODO
+  | Pi (a, B fam) ->
+      let a = check ctx a (V.Type 0) in
+      let a' = E.eval ctx.env a in
+      let _fiber = E.eval (a' :: ctx.env) fam in
+      (Pi (a, B fam), V.Type 0)
   | Sg (a, B fam) ->
       let a = check ctx a (V.Type 0) in
       let a' = E.eval ctx.env a in
@@ -94,7 +99,6 @@ and infer : context -> S.term -> S.term * V.vty =
           let b = E.clos_app clos u' in
           (App (t, u), b)
       | _ -> raise TODO)
-  | Pair (_, _) -> raise TODO
   | Fst _ -> raise TODO
   | Snd _ -> raise TODO
   (* universe of type *)
