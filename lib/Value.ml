@@ -1,3 +1,5 @@
+module S = Syntax
+
 type var = Lvl of int
 
 type value =
@@ -22,11 +24,12 @@ and closure =
   (* and with a captured environment *)
   | C of { binder : Syntax.term Syntax.binder; env : env }
 
-(* Gamma, x : A |- binder : B *)
-(* ------------------------------------- *)
-(* env : foreach z : C in Gamma, a value *)
 and env = value list
-and ctx = value list
+
+let rec unLvl : var -> int = fun v -> match v with Lvl l -> l
+
+and lvl2Ix : var -> var -> S.var =
+ fun cur prev -> Idx (unLvl cur - unLvl prev - 1)
 
 let rec v_to_str : value -> string =
  fun v ->
