@@ -31,9 +31,10 @@ let rec equate_ty : int -> V.value -> V.value -> unit =
       ()
   | _ -> raise (Unequal (tp0, tp1))
 
-and equate : int -> V.value -> V.value -> V.value -> unit =
- fun len tp val0 val1 ->
-  match tp with
+(* two values are same under proper type *)
+and equate : int -> V.vty -> V.value -> V.value -> unit =
+ fun len typ val0 val1 ->
+  match typ with
   | V.Pi (base, V.C { binder = B fam; env }) ->
       let var = V.Stuck (V.Var (V.Lvl len), base) in
       let result0 = Eval.app val0 var in
@@ -47,6 +48,7 @@ and equate : int -> V.value -> V.value -> V.value -> unit =
       let snd0 = Eval.snd val0 in
       let snd1 = Eval.snd val1 in
       let fiber = Eval.eval (fst1 :: env) fam in
+      (* since val0 val1 should both are pair like `(t, u)`, `t` will not affect environment in this sense *)
       equate len fiber snd0 snd1
   | _ -> (
       match (val0, val1) with

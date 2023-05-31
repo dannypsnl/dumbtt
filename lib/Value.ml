@@ -8,6 +8,8 @@ type value =
   | Type of int
   | Stuck of stuck * value (* the `value` here is the type of `stuck` *)
 
+and vty = value
+
 and stuck =
   (* or known as neutral *)
   | Var of var
