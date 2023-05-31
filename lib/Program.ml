@@ -17,7 +17,17 @@ type top_def =
   | Check of S.term * S.term
 
 type program = top_def list
-and context = { env : V.env; ctx : (string * V.vty) list; lvl : V.var }
+and ctx = (string * V.vty) list
+and context = { env : V.env; ctx : ctx; lvl : V.var }
+
+let rec ctx_proj : ctx -> int -> V.vty =
+ fun c i ->
+  match c with
+  | [] -> failwith "cannot find variable"
+  | (_, typ) :: c' ->
+      if i == 0 then typ
+      else if i > 0 then ctx_proj c' (i - 1)
+      else failwith "bug: the indices shouldn't smaller than 0"
 
 let bind : context -> string -> V.vty -> context =
  fun ctx name typ ->
@@ -65,16 +75,25 @@ let rec check_program : context -> top_def list -> unit =
 and infer : context -> S.term -> S.term * V.vty =
  fun ctx tm ->
   match tm with
-  | Var (Idx x) -> (Var (Idx x), E.proj ctx.env x)
+  (* cannot infer a lambda *)
+  | Lam _ -> raise InferLambda
+  (* inferrable *)
+  | Var (Idx x) -> (Var (Idx x), ctx_proj ctx.ctx x)
   | Pi (_, _) -> raise TODO
   | Sg (a, B fam) ->
       let a = check ctx a (V.Type 0) in
       let a' = E.eval ctx.env a in
       let _fiber = E.eval (a' :: ctx.env) fam in
       (Sg (a, B fam), V.Type 0)
-  (* cannot infer a lambda *)
-  | Lam _ -> raise InferLambda
-  | App (_, _) -> raise TODO
+  | App (t, u) -> (
+      let t, tty = infer ctx t in
+      match tty with
+      | Pi (a, V.C { binder = B term; env }) ->
+          let u = check ctx u a in
+          let u' = E.eval ctx.env u in
+          let b = E.eval (u' :: env) term in
+          (App (t, u), b)
+      | _ -> raise TODO)
   | Pair (_, _) -> raise TODO
   | Fst _ -> raise TODO
   | Snd _ -> raise TODO
